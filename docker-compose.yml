@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Droguería Balmoral — Inventario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ['Syne','sans-serif'], body: ['DM Sans','sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    .font-display, h1, h2, h3 { font-family: 'Syne', sans-serif; }
+
+    /* Fondo animado de partículas para el login */
+    @keyframes float {
+      0%,100% { transform: translateY(0px) rotate(0deg); opacity:.15; }
+      50%      { transform: translateY(-20px) rotate(180deg); opacity:.3; }
+    }
+    .particle { animation: float linear infinite; position:absolute; border-radius:50%; }
+
+    @keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation: fadeIn .35s ease forwards; }
+
+    @keyframes slideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+    .slide-in { animation: slideIn .3s ease forwards; }
+
+    @keyframes pulse-ring {
+      0%  { box-shadow: 0 0 0 0 rgba(45,212,191,.5); }
+      70% { box-shadow: 0 0 0 8px rgba(45,212,191,0); }
+      100%{ box-shadow: 0 0 0 0 rgba(45,212,191,0); }
+    }
+    .mfa-pulse { animation: pulse-ring 2s infinite; }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner { animation: spin .8s linear infinite; }
+
+    @keyframes rowIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+    .row-anim { animation: rowIn .25s ease forwards; }
+
+    /* Digits input styling */
+    input[type=text].otp-input {
+      letter-spacing: .35em;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+<!-- ═══════════════════════════════════════════════════════════
+     VISTA: LOGIN
+═══════════════════════════════════════════════════════════ -->
+<div id="vistaLogin" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+
+  <!-- Partículas decorativas de fondo -->
+  <div id="particulas" class="absolute inset-0 pointer-events-none"></div>
+
+  <!-- Tarjeta de login -->
+  <div class="relative z-10 w-full max-w-md">
+
+    <!-- Logo / cabecera -->
+    <div class="text-center mb-8 fade-in">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl
+                  bg-teal-500/20 border border-teal-500/30 text-3xl mb-4 shadow-lg
+                  shadow-teal-500/10">
+        💊
+      </div>
+      <h1 class="font-display text-3xl font-bold text-white">Droguería Balmoral</h1>
+      <p class="text-slate-400 text-sm mt-1">Sistema de Gestión de Inventario</p>
+    </div>
+
+    <!-- ── Paso 1: usuario + contraseña ── -->
+    <div id="loginPaso1"
+         class="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl fade-in">
+
+      <h2 class="font-display text-xl font-bold text-white mb-1">Iniciar sesión</h2>
+      <p class="text-slate-400 text-sm mb-6">Introduce tus credenciales de administrador.</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-slate-400 text-xs mb-1.5 uppercase tracking-wide">Usuario</label>
+          <input id="loginUsuario" type="text" placeholder="admin" autocomplete="username"
+                 class="w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                        px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500
+                        placeholder-slate-500" />
+        </div>
+        <div>
+          <label class="block text-slate-400 text-xs mb-1.5 uppercase tracking-wide">Contraseña</label>
+          <div class="relative">
+            <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"
+                   class="w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                          px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500
+                          placeholder-slate-500" />
+            <button onclick="togglePass()" class="absolute right-3 top-1/2 -translate-y-1/2
+                    text-slate-400 hover:text-slate-200 text-lg" tabindex="-1">
+              <span id="iconoPass">👁️</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p id="errorPaso1" class="text-red-400 text-sm mt-3 hidden"></p>
+
+      <button id="btnLoginPaso1" onclick="loginPaso1()"
+              class="mt-6 w-full bg-teal-500 hover:bg-teal-600 active:bg-teal-700
+                     text-white font-semibold py-3 rounded-xl transition">
+        Continuar →
+      </button>
+
+      <p class="text-center text-slate-600 text-xs mt-6">
+        🔒 Acceso restringido — Solo personal autorizado
+      </p>
+    </div>
+
+    <!-- ── Paso 2: TOTP ── -->
+    <div id="loginPaso2"
+         class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl fade-in">
+
+      <!-- Indicador de pasos -->
+      <div class="flex items-center gap-3 mb-6">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-xs font-bold text-white">✓</div>
+          <span class="text-slate-400 text-xs">Contraseña</span>
+        </div>
+        <div class="flex-1 h-px bg-slate-600"></div>
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-full bg-teal-500/20 border border-teal-500 flex items-center
+                      justify-center text-xs font-bold text-teal-400">2</div>
+          <span class="text-teal-400 text-xs font-medium">Verificación 2FA</span>
+        </div>
+      </div>
+
+      <h2 class="font-display text-xl font-bold text-white mb-1">Verificación en dos pasos</h2>
+      <p class="text-slate-400 text-sm mb-6">
+        Abre <strong class="text-slate-300">Google Authenticator</strong> o <strong class="text-slate-300">Authy</strong>
+        e introduce el código de 6 dígitos.
+      </p>
+
+      <!-- Ícono de escudo animado -->
+      <div class="flex justify-center mb-6">
+        <div class="w-16 h-16 rounded-2xl bg-teal-500/10 border border-teal-500/30
+                    flex items-center justify-center text-3xl mfa-pulse">
+          🔐
+        </div>
+      </div>
+
+      <input id="loginTotp" type="text" inputmode="numeric" maxlength="6"
+             placeholder="000000" autocomplete="one-time-code"
+             class="otp-input w-full bg-slate-700 border border-slate-600 rounded-xl
+                    text-white text-center text-3xl font-mono py-4 mb-4
+                    focus:outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-600" />
+
+      <p id="errorPaso2" class="text-red-400 text-sm mb-3 hidden"></p>
+
+      <!-- Contador regresivo del token -->
+      <div class="flex items-center justify-center gap-2 mb-4">
+        <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+          <div id="barraTotp" class="bg-teal-500 h-full transition-all duration-1000 rounded-full" style="width:100%"></div>
+        </div>
+        <span id="timerTotp" class="text-slate-400 text-xs whitespace-nowrap w-10 text-right">30s</span>
+      </div>
+
+      <button id="btnLoginPaso2" onclick="loginPaso2()"
+              class="w-full bg-teal-500 hover:bg-teal-600 active:bg-teal-700
+                     text-white font-semibold py-3 rounded-xl transition">
+        Verificar e ingresar →
+      </button>
+      <button onclick="volverPaso1()"
+              class="mt-2 w-full text-slate-500 hover:text-slate-300 text-sm py-2 transition">
+        ← Volver
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     VISTA: DASHBOARD (inventario)
+═══════════════════════════════════════════════════════════ -->
+<div id="vistaDashboard" class="hidden min-h-screen">
+
+  <!-- NAVBAR -->
+  <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="font-display text-xl font-bold text-white tracking-tight">💊 Droguería Balmoral</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Sistema de Inventario</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Badge usuario -->
+        <div class="hidden sm:flex items-center gap-2 bg-slate-700 px-3 py-1.5 rounded-full text-sm">
+          <span class="text-slate-400">👤</span>
+          <span id="labelUsuario" class="text-slate-300 text-xs font-medium"></span>
+        </div>
+        <!-- Badge 2FA -->
+        <div id="badge2fa"
+             onclick="abrirModalSetup()"
+             class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium
+                    bg-slate-700 text-slate-400 cursor-pointer hover:bg-slate-600 transition">
+          <span id="iconoMFA">🔓</span>
+          <span id="textoMFA" class="hidden sm:inline">2FA Desactivado</span>
+        </div>
+        <!-- Botón cerrar sesión -->
+        <button onclick="cerrarSesion()"
+                class="flex items-center gap-2 px-4 py-2 rounded-full text-sm
+                       bg-red-900/30 hover:bg-red-900/60 text-red-400 transition">
+          <span>⏏</span>
+          <span class="hidden sm:inline">Salir</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO -->
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="font-display text-2xl font-bold text-white">Inventario</h2>
+        <p class="text-slate-400 text-sm mt-1">Los cambios requieren código 2FA.</p>
+      </div>
+      <button onclick="abrirModalAgregar()"
+              class="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white
+                     font-semibold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-teal-500/20">
+        <span class="text-lg leading-none">＋</span>
+        <span>Nuevo medicamento</span>
+      </button>
+    </div>
+
+    <div id="alertaError" class="hidden mb-4 bg-red-900/50 border border-red-500/50 text-red-300
+         rounded-xl px-5 py-3 text-sm"></div>
+
+    <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-slate-700/60 text-slate-300 text-xs uppercase tracking-wider">
+            <th class="px-6 py-4 text-left">Medicamento</th>
+            <th class="px-6 py-4 text-left hidden md:table-cell">Categoría</th>
+            <th class="px-6 py-4 text-right">Precio</th>
+            <th class="px-6 py-4 text-right">Stock</th>
+            <th class="px-6 py-4 text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaMedicamentos">
+          <tr><td colspan="5" class="text-center text-slate-500 py-16">
+            <div class="flex flex-col items-center gap-3">
+              <svg class="w-8 h-8 spinner text-teal-500" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+              <span>Cargando…</span>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: SETUP 2FA
+═══════════════════════════════════════════════════════════ -->
+<div id="modalSetup" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background:rgba(0,0,0,.7);backdrop-filter:blur(4px)">
+  <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+    <button onclick="cerrarModalSetup()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-300 text-xl">✕</button>
+
+    <div id="setupPaso1">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 text-xl">🔐</div>
+        <div>
+          <h3 class="font-display text-lg font-bold text-white">Configurar 2FA</h3>
+          <p class="text-slate-400 text-xs">TOTP / RFC 6238 — Google Authenticator / Authy</p>
+        </div>
+      </div>
+      <p class="text-slate-300 text-sm mb-6">
+        Haz clic en <strong class="text-teal-400">Generar QR</strong>, escanéalo con tu app
+        autenticadora y luego verifica el código.
+      </p>
+      <button onclick="generarQR()" id="btnGenerarQR"
+              class="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 rounded-xl transition mb-4">
+        Generar código QR
+      </button>
+      <div id="areaQR" class="hidden text-center">
+        <p class="text-slate-400 text-xs mb-3">Escanea con tu autenticadora:</p>
+        <img id="imagenQR" src="" alt="QR"
+             class="mx-auto rounded-xl border border-slate-600 w-52 h-52 object-contain bg-white p-2" />
+        <p class="text-slate-500 text-xs mt-2 break-all px-2" id="secretoTexto"></p>
+        <button onclick="irSetupPaso2()"
+                class="mt-5 w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition">
+          Ya escaneé el QR →
+        </button>
+      </div>
+    </div>
+
+    <div id="setupPaso2" class="hidden">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 text-xl">✅</div>
+        <div>
+          <h3 class="font-display text-lg font-bold text-white">Verificar token</h3>
+          <p class="text-slate-400 text-xs">Introduce el código de 6 dígitos de tu app</p>
+        </div>
+      </div>
+      <input id="inputTokenSetup" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+             class="otp-input w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                    text-center text-2xl font-mono py-4 mb-4
+                    focus:outline-none focus:ring-2 focus:ring-teal-500" />
+      <p id="errorSetup" class="text-red-400 text-sm mb-3 hidden"></p>
+      <button onclick="verificarSetup()"
+              class="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 rounded-xl transition">
+        Activar 2FA
+      </button>
+      <button onclick="document.getElementById('setupPaso2').classList.add('hidden');document.getElementById('setupPaso1').classList.remove('hidden')"
+              class="mt-2 w-full text-slate-400 hover:text-slate-300 text-sm py-2 transition">
+        ← Volver
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: MEDICAMENTO (crear / editar)
+═══════════════════════════════════════════════════════════ -->
+<div id="modalMed" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background:rgba(0,0,0,.7);backdrop-filter:blur(4px)">
+  <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-lg p-8 relative">
+    <button onclick="cerrarModalMed()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-300 text-xl">✕</button>
+    <h3 id="tituloModal" class="font-display text-xl font-bold text-white mb-6">Nuevo medicamento</h3>
+    <input type="hidden" id="medId" />
+    <div class="space-y-4">
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 uppercase tracking-wide">Nombre *</label>
+        <input id="medNombre" type="text" placeholder="Ej. Acetaminofén 500mg"
+               class="w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                      px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-slate-400 text-xs mb-1.5 uppercase tracking-wide">Precio (COP) *</label>
+          <input id="medPrecio" type="number" min="0" step="100" placeholder="3500"
+                 class="w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                        px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+        </div>
+        <div>
+          <label class="block text-slate-400 text-xs mb-1.5 uppercase tracking-wide">Stock *</label>
+          <input id="medStock" type="number" min="0" placeholder="100"
+                 class="w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                        px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 uppercase tracking-wide">Categoría</label>
+        <input id="medCategoria" type="text" placeholder="Ej. Analgésicos"
+               class="w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                      px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+      </div>
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 uppercase tracking-wide">Descripción</label>
+        <textarea id="medDescripcion" rows="2" placeholder="Descripción breve…"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                         px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"></textarea>
+      </div>
+      <!-- Campo token MFA -->
+      <div class="bg-slate-700/50 border border-teal-500/30 rounded-xl p-4">
+        <label class="block text-teal-400 text-xs mb-1.5 uppercase tracking-wide font-semibold">
+          🔑 Código 2FA (requerido)
+        </label>
+        <input id="medToken" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+               class="otp-input w-full bg-slate-800 border border-slate-600 rounded-lg text-white
+                      font-mono text-center text-xl py-3
+                      focus:outline-none focus:ring-2 focus:ring-teal-500" />
+        <p class="text-slate-500 text-xs mt-1.5">Código actual de Google Authenticator / Authy.</p>
+      </div>
+    </div>
+    <p id="errorModal" class="text-red-400 text-sm mt-3 hidden"></p>
+    <button onclick="guardarMedicamento()"
+            class="mt-6 w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 rounded-xl transition">
+      Guardar medicamento
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: ELIMINAR
+═══════════════════════════════════════════════════════════ -->
+<div id="modalEliminar" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background:rgba(0,0,0,.7);backdrop-filter:blur(4px)">
+  <div class="bg-slate-800 border border-red-900/50 rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative">
+    <button onclick="cerrarModalEliminar()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-300 text-xl">✕</button>
+    <div class="text-4xl mb-4">🗑️</div>
+    <h3 class="font-display text-lg font-bold text-white mb-2">Eliminar medicamento</h3>
+    <p class="text-slate-400 text-sm mb-6">Esta acción no se puede deshacer. Confirma con tu código 2FA.</p>
+    <input id="tokenEliminar" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+           class="otp-input w-full bg-slate-700 border border-slate-600 rounded-xl text-white
+                  font-mono text-center text-xl py-3 mb-4
+                  focus:outline-none focus:ring-2 focus:ring-red-500" />
+    <p id="errorEliminar" class="text-red-400 text-sm mb-3 hidden"></p>
+    <button onclick="confirmarEliminar()"
+            class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition">
+      Confirmar eliminación
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────────────────
+// Config
+// ─────────────────────────────────────────────────────────
+const API = window.location.origin;
+const $ = id => document.getElementById(id);
+
+let jwtToken     = null;   // JWT de sesión
+let usuarioActual = null;  // nombre de usuario autenticado
+let usuarioTemp  = null;   // guardado entre paso 1 y paso 2 del login
+let idAEliminar  = null;
+let modoEdicion  = false;
+let timerInterval = null;
+
+// ─────────────────────────────────────────────────────────
+// Partículas decorativas del fondo de login
+// ─────────────────────────────────────────────────────────
+function crearParticulas() {
+  const cont = $('particulas');
+  const colores = ['#14b8a6','#0d9488','#2dd4bf','#99f6e4'];
+  for (let i = 0; i < 18; i++) {
+    const d = document.createElement('div');
+    const size = Math.random() * 60 + 20;
+    d.className = 'particle';
+    d.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%; top:${Math.random()*100}%;
+      background:${colores[i%colores.length]};
+      animation-duration:${Math.random()*10+8}s;
+      animation-delay:${Math.random()*5}s;
+    `;
+    cont.appendChild(d);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────
+function mostrarAlerta(msg) {
+  const el = $('alertaError');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+function formatCOP(v) {
+  return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(v);
+}
+
+function notifExito(msg) {
+  const n = document.createElement('div');
+  n.className = 'fixed top-6 right-6 bg-teal-500 text-white text-sm font-semibold px-6 py-3 rounded-xl shadow-xl z-50 fade-in';
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 3500);
+}
+
+function authHeaders(extra = {}) {
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}`, ...extra };
+}
+
+// ─────────────────────────────────────────────────────────
+// Mostrar vista login / dashboard
+// ─────────────────────────────────────────────────────────
+function mostrarLogin() {
+  $('vistaLogin').classList.remove('hidden');
+  $('vistaDashboard').classList.add('hidden');
+  detenerTimerTotp();
+}
+
+function mostrarDashboard() {
+  $('vistaLogin').classList.add('hidden');
+  $('vistaDashboard').classList.remove('hidden');
+  $('labelUsuario').textContent = usuarioActual;
+  cargarMedicamentos();
+  actualizarBadge2FA();
+}
+
+// ─────────────────────────────────────────────────────────
+// Toggle contraseña visible
+// ─────────────────────────────────────────────────────────
+function togglePass() {
+  const inp = $('loginPass');
+  const mostrar = inp.type === 'password';
+  inp.type = mostrar ? 'text' : 'password';
+  $('iconoPass').textContent = mostrar ? '🙈' : '👁️';
+}
+
+// ─────────────────────────────────────────────────────────
+// LOGIN PASO 1: usuario + contraseña
+// ─────────────────────────────────────────────────────────
+async function loginPaso1() {
+  const usuario   = $('loginUsuario').value.trim();
+  const contrasena = $('loginPass').value;
+  const err = $('errorPaso1');
+
+  err.classList.add('hidden');
+
+  if (!usuario || !contrasena) {
+    err.textContent = 'Completa usuario y contraseña.';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  const btn = $('btnLoginPaso1');
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+
+  try {
+    const r    = await fetch(`${API}/api/auth/login`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ usuario, contrasena }),
+    });
+    const data = await r.json();
+
+    if (!r.ok) {
+      err.textContent = data.error || 'Credenciales incorrectas.';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    usuarioTemp = usuario;
+
+    if (data.requiere2fa) {
+      // Mostrar paso 2
+      $('loginPaso1').classList.add('hidden');
+      $('loginPaso2').classList.remove('hidden');
+      $('loginTotp').value = '';
+      $('errorPaso2').classList.add('hidden');
+      iniciarTimerTotp();
+      setTimeout(() => $('loginTotp').focus(), 100);
+    } else {
+      // Sin 2FA: sesión directa
+      jwtToken      = data.token;
+      usuarioActual = data.usuario;
+      mostrarDashboard();
+    }
+  } catch {
+    err.textContent = 'Error de conexión con el servidor.';
+    err.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continuar →';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// LOGIN PASO 2: TOTP
+// ─────────────────────────────────────────────────────────
+async function loginPaso2() {
+  const token = $('loginTotp').value.trim();
+  const err   = $('errorPaso2');
+  err.classList.add('hidden');
+
+  if (token.length !== 6) {
+    err.textContent = 'El código debe tener exactamente 6 dígitos.';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  const btn = $('btnLoginPaso2');
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+
+  try {
+    const r    = await fetch(`${API}/api/auth/login/totp`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ usuario: usuarioTemp, token }),
+    });
+    const data = await r.json();
+
+    if (!r.ok) {
+      err.textContent = data.error || 'Código incorrecto.';
+      err.classList.remove('hidden');
+      $('loginTotp').value = '';
+      $('loginTotp').focus();
+      return;
+    }
+
+    jwtToken      = data.token;
+    usuarioActual = data.usuario;
+    detenerTimerTotp();
+    mostrarDashboard();
+  } catch {
+    err.textContent = 'Error de conexión.';
+    err.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Verificar e ingresar →';
+  }
+}
+
+function volverPaso1() {
+  detenerTimerTotp();
+  $('loginPaso2').classList.add('hidden');
+  $('loginPaso1').classList.remove('hidden');
+  $('loginPass').value = '';
+  $('errorPaso1').classList.add('hidden');
+}
+
+// ─────────────────────────────────────────────────────────
+// Temporizador TOTP (barra de 30 segundos)
+// ─────────────────────────────────────────────────────────
+function iniciarTimerTotp() {
+  detenerTimerTotp();
+  function tick() {
+    const seg = 30 - (Math.floor(Date.now() / 1000) % 30);
+    const pct = (seg / 30) * 100;
+    $('timerTotp').textContent = `${seg}s`;
+    $('barraTotp').style.width = `${pct}%`;
+    $('barraTotp').className = `h-full transition-all duration-1000 rounded-full ${seg <= 5 ? 'bg-red-500' : 'bg-teal-500'}`;
+  }
+  tick();
+  timerInterval = setInterval(tick, 1000);
+}
+
+function detenerTimerTotp() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+// ─────────────────────────────────────────────────────────
+// Cerrar sesión
+// ─────────────────────────────────────────────────────────
+function cerrarSesion() {
+  jwtToken = null;
+  usuarioActual = null;
+  usuarioTemp = null;
+  $('loginUsuario').value = '';
+  $('loginPass').value = '';
+  $('loginTotp').value = '';
+  $('loginPaso1').classList.remove('hidden');
+  $('loginPaso2').classList.add('hidden');
+  mostrarLogin();
+}
+
+// ─────────────────────────────────────────────────────────
+// Badge 2FA en navbar
+// ─────────────────────────────────────────────────────────
+async function actualizarBadge2FA() {
+  if (!jwtToken) return;
+  try {
+    const r    = await fetch(`${API}/api/2fa/estado`, { headers: authHeaders() });
+    const data = await r.json();
+    const badge = $('badge2fa');
+    if (data.activado) {
+      badge.className = badge.className
+        .replace('bg-slate-700 text-slate-400','')
+        + ' bg-teal-500/20 text-teal-400 mfa-pulse';
+      $('iconoMFA').textContent = '🔒';
+      $('textoMFA').textContent = '2FA Activo';
+    } else {
+      $('iconoMFA').textContent = '🔓';
+      $('textoMFA').textContent = '2FA Desactivado';
+    }
+  } catch {}
+}
+
+// ─────────────────────────────────────────────────────────
+// Tabla de medicamentos
+// ─────────────────────────────────────────────────────────
+async function cargarMedicamentos() {
+  if (!jwtToken) return;
+  try {
+    const r    = await fetch(`${API}/api/medicamentos`, { headers: authHeaders() });
+    if (r.status === 401) { cerrarSesion(); return; }
+    const data = await r.json();
+    const tbody = $('tablaMedicamentos');
+
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-12">Sin medicamentos en inventario.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map((m, i) => `
+      <tr class="border-t border-slate-700 hover:bg-slate-700/30 transition row-anim"
+          style="animation-delay:${i*25}ms">
+        <td class="px-6 py-4">
+          <p class="font-medium text-white">${m.nombre}</p>
+          <p class="text-slate-500 text-xs mt-0.5 truncate max-w-xs">${m.descripcion || ''}</p>
+        </td>
+        <td class="px-6 py-4 hidden md:table-cell">
+          <span class="inline-block bg-slate-700 text-slate-300 text-xs px-3 py-1 rounded-full">
+            ${m.categoria || '—'}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-right font-mono text-teal-400 font-medium">${formatCOP(m.precio)}</td>
+        <td class="px-6 py-4 text-right">
+          <span class="font-semibold ${m.stock < 20 ? 'text-red-400' : 'text-slate-200'}">${m.stock}</span>
+        </td>
+        <td class="px-6 py-4 text-center">
+          <div class="flex items-center justify-center gap-2">
+            <button onclick="abrirModalEditar(${JSON.stringify(m).replace(/"/g,'&quot;')})"
+                    class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition">
+              ✏️ Editar
+            </button>
+            <button onclick="abrirModalEliminar(${m.id})"
+                    class="text-xs bg-red-900/40 hover:bg-red-900/70 text-red-400 px-3 py-1.5 rounded-lg transition">
+              🗑️
+            </button>
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch {
+    mostrarAlerta('No se pudo conectar con la API.');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Modal Setup 2FA
+// ─────────────────────────────────────────────────────────
+function abrirModalSetup() {
+  $('modalSetup').classList.remove('hidden');
+  $('setupPaso1').classList.remove('hidden');
+  $('setupPaso2').classList.add('hidden');
+  $('areaQR').classList.add('hidden');
+}
+function cerrarModalSetup() {
+  $('modalSetup').classList.add('hidden');
+  actualizarBadge2FA();
+}
+async function generarQR() {
+  const btn = $('btnGenerarQR');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r    = await fetch(`${API}/api/2fa/setup`, { headers: authHeaders() });
+    if (r.status === 401) { cerrarSesion(); return; }
+    const data = await r.json();
+    $('imagenQR').src = data.qr;
+    $('secretoTexto').textContent = `Secreto: ${data.secreto}`;
+    $('areaQR').classList.remove('hidden');
+    btn.textContent = 'Regenerar QR';
+  } catch { mostrarAlerta('Error al generar QR.'); }
+  finally { btn.disabled = false; }
+}
+function irSetupPaso2() {
+  $('setupPaso1').classList.add('hidden');
+  $('setupPaso2').classList.remove('hidden');
+  $('inputTokenSetup').value = '';
+  $('errorSetup').classList.add('hidden');
+  setTimeout(() => $('inputTokenSetup').focus(), 100);
+}
+async function verificarSetup() {
+  const token = $('inputTokenSetup').value.trim();
+  if (token.length !== 6) {
+    $('errorSetup').textContent = 'El código debe tener 6 dígitos.';
+    $('errorSetup').classList.remove('hidden'); return;
+  }
+  try {
+    const r = await fetch(`${API}/api/2fa/verify`, {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ token }),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      $('errorSetup').textContent = data.error || 'Token incorrecto.';
+      $('errorSetup').classList.remove('hidden'); return;
+    }
+    cerrarModalSetup();
+    notifExito('✅ 2FA activado correctamente');
+  } catch {
+    $('errorSetup').textContent = 'Error de conexión.';
+    $('errorSetup').classList.remove('hidden');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Modal Medicamento (crear / editar)
+// ─────────────────────────────────────────────────────────
+function abrirModalAgregar() {
+  modoEdicion = false;
+  $('tituloModal').textContent = 'Nuevo medicamento';
+  ['medId','medNombre','medPrecio','medStock','medCategoria','medDescripcion','medToken']
+    .forEach(id => $(id).value = '');
+  $('errorModal').classList.add('hidden');
+  $('modalMed').classList.remove('hidden');
+  setTimeout(() => $('medNombre').focus(), 100);
+}
+function abrirModalEditar(med) {
+  modoEdicion = true;
+  $('tituloModal').textContent = 'Editar medicamento';
+  $('medId').value          = med.id;
+  $('medNombre').value      = med.nombre;
+  $('medPrecio').value      = med.precio;
+  $('medStock').value       = med.stock;
+  $('medCategoria').value   = med.categoria || '';
+  $('medDescripcion').value = med.descripcion || '';
+  $('medToken').value       = '';
+  $('errorModal').classList.add('hidden');
+  $('modalMed').classList.remove('hidden');
+}
+function cerrarModalMed() { $('modalMed').classList.add('hidden'); }
+
+async function guardarMedicamento() {
+  const token  = $('medToken').value.trim();
+  const nombre = $('medNombre').value.trim();
+  const precio = parseFloat($('medPrecio').value);
+  const stock  = parseInt($('medStock').value, 10);
+
+  if (!nombre || isNaN(precio) || isNaN(stock)) {
+    $('errorModal').textContent = 'Completa nombre, precio y stock.';
+    $('errorModal').classList.remove('hidden'); return;
+  }
+  if (!token || token.length !== 6) {
+    $('errorModal').textContent = 'Introduce el código 2FA de 6 dígitos.';
+    $('errorModal').classList.remove('hidden'); return;
+  }
+
+  const payload = {
+    nombre, precio, stock,
+    descripcion: $('medDescripcion').value.trim(),
+    categoria:   $('medCategoria').value.trim(),
+  };
+  const url    = modoEdicion ? `${API}/api/medicamentos/${$('medId').value}` : `${API}/api/medicamentos`;
+  const metodo = modoEdicion ? 'PUT' : 'POST';
+
+  try {
+    const r = await fetch(url, {
+      method:  metodo,
+      headers: authHeaders({ 'x-mfa-token': token }),  // ← JWT + MFA en headers
+      body:    JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (r.status === 401 && data.error?.includes('Sesión')) { cerrarSesion(); return; }
+    if (!r.ok) {
+      $('errorModal').textContent = data.error || 'Error al guardar.';
+      $('errorModal').classList.remove('hidden'); return;
+    }
+    cerrarModalMed();
+    cargarMedicamentos();
+    notifExito(modoEdicion ? '✏️ Medicamento actualizado' : '✅ Medicamento creado');
+  } catch {
+    $('errorModal').textContent = 'Error de conexión.';
+    $('errorModal').classList.remove('hidden');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Modal Eliminar
+// ─────────────────────────────────────────────────────────
+function abrirModalEliminar(id) {
+  idAEliminar = id;
+  $('tokenEliminar').value = '';
+  $('errorEliminar').classList.add('hidden');
+  $('modalEliminar').classList.remove('hidden');
+  setTimeout(() => $('tokenEliminar').focus(), 100);
+}
+function cerrarModalEliminar() { $('modalEliminar').classList.add('hidden'); idAEliminar = null; }
+
+async function confirmarEliminar() {
+  const token = $('tokenEliminar').value.trim();
+  if (!token || token.length !== 6) {
+    $('errorEliminar').textContent = 'Introduce el código 2FA de 6 dígitos.';
+    $('errorEliminar').classList.remove('hidden'); return;
+  }
+  try {
+    const r = await fetch(`${API}/api/medicamentos/${idAEliminar}`, {
+      method:  'DELETE',
+      headers: authHeaders({ 'x-mfa-token': token }),  // ← JWT + MFA en headers
+    });
+    const data = await r.json();
+    if (r.status === 401 && data.error?.includes('Sesión')) { cerrarSesion(); return; }
+    if (!r.ok) {
+      $('errorEliminar').textContent = data.error || 'Token inválido.';
+      $('errorEliminar').classList.remove('hidden'); return;
+    }
+    cerrarModalEliminar();
+    cargarMedicamentos();
+    notifExito('🗑️ Medicamento eliminado');
+  } catch {
+    $('errorEliminar').textContent = 'Error de conexión.';
+    $('errorEliminar').classList.remove('hidden');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Teclas rápidas
+// ─────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    cerrarModalMed(); cerrarModalEliminar(); cerrarModalSetup();
+  }
+  // Enter en inputs de login
+  if (e.key === 'Enter') {
+    if (!$('loginPaso2').classList.contains('hidden')) loginPaso2();
+    else if (!$('loginPaso1').classList.contains('hidden')) loginPaso1();
+  }
+});
+
+// Auto-submit del TOTP al completar 6 dígitos
+$('loginTotp').addEventListener('input', e => {
+  if (e.target.value.length === 6) loginPaso2();
+});
+
+// ─────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  crearParticulas();
+  mostrarLogin();
+});
+</script>
+</body>
+</html>
